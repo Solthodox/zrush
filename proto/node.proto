@@ -1,0 +1,29 @@
+syntax = "proto3";
+package node;
+
+message TransactionRequest {
+    bytes from = 1;
+    bytes to = 2;
+    bytes amount = 3;
+    bytes fee = 4;
+    Signature signature=5;
+}
+
+message Signature {
+    bytes s=1;
+    bytes r=2;
+    uint64 v=3;
+}
+message SyncRequest {}
+
+message RequestSyncResponse {
+    string networkSettings=1;
+}
+
+message TransactionResponse {}
+
+
+service Node {
+    rpc RequestSendTransaction(TransactionRequest) returns(TransactionResponse) {}
+    rpc RequestSync(SyncRequest) returns(RequestSyncResponse) {}
+}
