@@ -13,6 +13,7 @@ mod node {
 
 use node::{
     node_server::{Node, NodeServer},
+    node_client::NodeClient,
     RequestSyncResponse, SyncRequest, TransactionRequest, TransactionResponse,
 };
 
@@ -47,21 +48,16 @@ impl Node for NodeService {
         &self,
         req: Request<SyncRequest>,
     ) -> Result<Response<RequestSyncResponse>, Status> {
-        let folder_path = "data/";
-        let file_name = String::from("chain_config.json");
-        let file_path = Path::new(folder_path).join(file_name);
-        match File::open(file_path) {
-            Ok(mut file) => {
-                let mut content = String::new();
-                file.read_to_string(&mut content)?;
-                return Ok(Response::new(RequestSyncResponse {
-                    network_settings: content,
-                }));
-            }
-            Err(_) => return Err(Status::new(Code::NotFound, "Failed to sync")),
-        }
+        
+       let config = read_from_file("data/", "chain_config.json");
+       let data = read_from_file("data/", "/storage/chain_data.json");
+       if let (Ok(config_content), Ok(data_content)) = (config, data){
+            return Ok(Response::new(RequestSyncResponse { network_settings: config_content, data: data_content }));
+       }
+       return Err(Status::new(Code::DataLoss,"Error reading data"))
     }
 }
+
 
 fn parse_grpc_transaction_request(tx: TransactionRequest) -> Result<Transaction, &'static str> {
     let from: [u8; 20] = tx.from.try_into().map_err(|_| "Invalid from")?;
@@ -119,9 +115,6 @@ pub fn create_new_blockchain() {
     "
     );
     println!("================================================");
-    let bytes_example: [u8; 20] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0];
-    let example_address = Address::from(&bytes_example);
-    println!("address : {:?}", example_address);
     let (chain_config, node_config) = config_blockchain();
     let first_block = Block::genesis_block(
         &chain_config.initial_block_reward,
@@ -129,7 +122,7 @@ pub fn create_new_blockchain() {
     );
     let serialization = serde_json::to_string(&first_block).unwrap();
     let folder_path = "data/storage";
-    let file_name = String::from("chain.json");
+    let file_name = String::from("chain_data.json");
     let file_name = file_name.as_str();
     std::fs::create_dir_all(folder_path).unwrap();
     let file_path = Path::new(folder_path).join(file_name);
@@ -243,6 +236,28 @@ fn months_to_milliseconds(months: i64) -> i64 {
     difference
 }
 
+fn read_from_file(path: &str, file_name: &str) -> Result<String,()> {
+        let file_path = Path::new(&path).join(file_name);
+        let mut content = String::new();
+        match File::open(file_path){
+            Ok(mut file) => {
+                let _ = file.read_to_string(&mut content);
+                return  Ok(content);
+            },
+            Err(_) => return Err(())
+        }    
+}
+
+
+
+pub async fn sync_node(boot_node_addr: String) -> Result<Response<RequestSyncResponse>,Status> {
+    let mut client = NodeClient::connect(boot_node_addr.clone())
+        .await
+        .expect("Failed to connect to the boot node");
+    let sync_request = SyncRequest{};
+    client.request_sync(sync_request).await
+}
+
 pub async fn run_node(port: &str) {
     let addr = String::from("127.0.0.1:") + port;
     println!("✔️ Running node in: {addr}");
@@ -254,3 +269,5 @@ pub async fn run_node(port: &str) {
         .await
         .unwrap();
 }
+
+

@@ -18,6 +18,7 @@ message SyncRequest {}
 
 message RequestSyncResponse {
     string networkSettings=1;
+    string data=2;
 }
 
 message TransactionResponse {}

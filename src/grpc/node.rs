@@ -30,6 +30,8 @@ pub struct SyncRequest {}
 pub struct RequestSyncResponse {
     #[prost(string, tag = "1")]
     pub network_settings: ::prost::alloc::string::String,
+    #[prost(string, tag = "2")]
+    pub data: ::prost::alloc::string::String,
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
