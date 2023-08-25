@@ -35,7 +35,7 @@ debug = false
 
 
 [profile.local]
-inherit = "release"
+inherits = "release"
 opt-level = 3
 strip = true
 panic = "abort"
