@@ -1,10 +1,13 @@
+use std::{
+    fs::File,
+    io::{stdin, Write},
+    path::Path,
+};
+
+use crate::utils::files::{read_from_file, write_to_file};
 use chrono::{Duration, Utc};
 use ethers::types::{Address, Signature, U256};
 use serde_derive::Serialize;
-use std::fs::File;
-
-use std::io::{stdin, Read, Write};
-use std::path::Path;
 use tonic::{transport::Server, Code, Request, Response, Status};
 
 mod node {
@@ -12,13 +15,20 @@ mod node {
 }
 
 use node::{
-    node_server::{Node, NodeServer},
     node_client::NodeClient,
+    node_server::{Node, NodeServer},
     RequestSyncResponse, SyncRequest, TransactionRequest, TransactionResponse,
 };
 
 use crate::block::block::Block;
 use crate::{signature::verification::verify_signature, transaction::core::Transaction};
+
+#[derive(Debug)]
+pub enum NodeError {
+    SyncError(String),
+    NetworkError(String),
+    InvalidConfigInput(String),
+}
 
 #[derive(Default)]
 pub struct NodeService;
@@ -48,16 +58,17 @@ impl Node for NodeService {
         &self,
         req: Request<SyncRequest>,
     ) -> Result<Response<RequestSyncResponse>, Status> {
-        
-       let config = read_from_file("data/", "chain_config.json");
-       let data = read_from_file("data/", "/storage/chain_data.json");
-       if let (Ok(config_content), Ok(data_content)) = (config, data){
-            return Ok(Response::new(RequestSyncResponse { network_settings: config_content, data: data_content }));
-       }
-       return Err(Status::new(Code::DataLoss,"Error reading data"))
+        let config = read_from_file("data/", "chain_config.json");
+        let data = read_from_file("data/", "/storage/chain_data.json");
+        if let (Ok(config_content), Ok(data_content)) = (config, data) {
+            return Ok(Response::new(RequestSyncResponse {
+                network_settings: config_content,
+                data: data_content,
+            }));
+        }
+        return Err(Status::new(Code::DataLoss, "Error reading data"));
     }
 }
-
 
 fn parse_grpc_transaction_request(tx: TransactionRequest) -> Result<Transaction, &'static str> {
     let from: [u8; 20] = tx.from.try_into().map_err(|_| "Invalid from")?;
@@ -101,7 +112,7 @@ pub struct NodeConfig {
     wallet_address: Address,
 }
 
-pub fn create_new_blockchain() {
+pub fn create_new_blockchain() -> Result<(), NodeError> {
     println!("================================================");
     println!(
         "
@@ -115,82 +126,75 @@ pub fn create_new_blockchain() {
     "
     );
     println!("================================================");
-    let (chain_config, node_config) = config_blockchain();
+    let (chain_config, node_config) = config_blockchain()
+        .map_err(|err_msg| NodeError::InvalidConfigInput(err_msg.to_string()))?;
     let first_block = Block::genesis_block(
         &chain_config.initial_block_reward,
         &node_config.wallet_address,
     );
-    let serialization = serde_json::to_string(&first_block).unwrap();
-    let folder_path = "data/storage";
-    let file_name = String::from("chain_data.json");
-    let file_name = file_name.as_str();
-    std::fs::create_dir_all(folder_path).unwrap();
-    let file_path = Path::new(folder_path).join(file_name);
-    let mut file = File::create(file_path).unwrap();
-
-    let content = serde_json::to_string(&serialization).expect("Failed to serialize chain config");
-    file.write_all(content.as_bytes()).unwrap();
-
-    println!("Data has been written to the file.");
-    println!("chain config saved to : {file_name}");
+    let serialization = serde_json::to_string(&first_block).map_err(|_| 
+        NodeError::InvalidConfigInput(String::from("Failed to serialize genesis block"))
+    )?;
+    let _ = write_to_file("/data/storage", "chain_data.json", &serialization);
+    Ok(())
 }
 
-fn config_blockchain() -> (ChainConfig, NodeConfig) {
-    println!("Name:");
+fn config_blockchain() -> Result<(ChainConfig, NodeConfig), &'static str> {
+    println!("* Name:");
     let mut buf = String::new();
     let _ = stdin()
         .read_line(&mut buf)
-        .expect("stdin: Failed to read line");
-    let name = buf.trim().parse::<String>().unwrap().to_lowercase();
+        .map_err(|_| "stdin: Failed to read name")?;
+    let name = buf.trim().parse::<String>().map_err(|_| "Invalid name")?.to_lowercase();
 
-    println!("Chain id:");
+    println!("* Chain id:");
     let mut buf = String::new();
     let _ = stdin()
         .read_line(&mut buf)
-        .expect("stdin: Failed to read line");
-    let chain_id = buf.trim().parse::<i32>().unwrap() as u8;
+        .map_err(|_| "stdin: Failed to read chain id")?;
+    let chain_id = buf.trim().parse::<i32>().map_err(|_| "Invalid chain id")? as u8;
 
-    println!("Seconds between blocks:");
+    println!("* Seconds between blocks:");
     let mut buf = String::new();
     let _ = stdin()
         .read_line(&mut buf)
-        .expect("stdin: Failed to read line");
-    let seconds_between_blocks = buf.trim().parse::<u8>().unwrap();
+        .map_err(|_| "stdin: Failed to read seconds between blocks")?;
+    let seconds_between_blocks = buf.trim().parse::<u8>().map_err(|_| "Invalid seconds between blocks")?;
 
-    println!("Initial block reward: ");
+    println!("* Initial block reward: ");
     let mut buf = String::new();
     let _ = stdin()
         .read_line(&mut buf)
-        .expect("stdin: Failed to read line");
-    let initial_block_reward = buf.trim().parse::<String>().unwrap();
+        .map_err(|_| "stdin: Failed to read initial block reward")?;
+    let initial_block_reward = buf.trim().parse::<String>().map_err(|_| "Invalid read initial block reward")?;
     let mut target = [0u8; 32];
     let source = initial_block_reward.as_bytes();
-
-    for (target_elem, source_elem) in target.iter_mut().zip(source.iter().take(32)) {
-        *target_elem = *source_elem;
-    }
+    let fill_bytes = |target: &mut [u8], source: &[u8], bytes: usize| {
+        for (target_elem, source_elem) in target.iter_mut().zip(source.iter().take(bytes)) {
+            *target_elem = *source_elem;
+        }
+    };
+    fill_bytes(&mut target, &source, 32);
 
     let initial_block_reward = U256::from(&target);
-    println!("Months between halvings: ");
+    println!("* Months between halvings: ");
     let mut buf = String::new();
     let _ = stdin()
         .read_line(&mut buf)
-        .expect("stdin: Failed to read line");
-    let months_between_halvings = buf.trim().parse::<i64>().unwrap();
+        .map_err(|_| "stdin: Failed to read months between halving")?;
+    let months_between_halvings = buf.trim().parse::<i64>().map_err(|_| "Invalid months between halving")?;
     let months_between_halvings = months_to_milliseconds(months_between_halvings) as u64;
 
-    println!("Wallet address: ");
+    println!("* Wallet address: ");
     let mut buf = String::new();
     let _ = stdin()
         .read_line(&mut buf)
-        .expect("stdin: Failed to read line");
-    let wallet_address: String = buf.trim().parse().unwrap();
+        .map_err(|_| "stdin: Failed to read wallet address");
+    let wallet_address: String = buf.trim().parse().map_err(|_| "Failed")?;
     let mut target = [0u8; 20];
     let source = wallet_address.as_bytes();
 
-    for (target_elem, source_elem) in target.iter_mut().zip(source.iter().take(20)) {
-        *target_elem = *source_elem;
-    }
+    fill_bytes(&mut target, &source, 20);
     let node_config = NodeConfig {
         wallet_address: Address::from(&target),
     };
@@ -206,23 +210,11 @@ fn config_blockchain() -> (ChainConfig, NodeConfig) {
         months_between_halvings,
     };
 
-    println!("==============Blockchain successfully created===============");
-
-    println!("{:#?} ", chain_config);
-    println!("{:#?} ", node_config);
-    let folder_path = "data";
-    let file_name = String::from("chain_config.json");
-    let file_name = file_name.as_str();
-    std::fs::create_dir_all(folder_path).unwrap();
-    let file_path = Path::new(folder_path).join(file_name);
-    let mut file = File::create(file_path).unwrap();
-
-    let content = serde_json::to_string(&chain_config).expect("Failed to serialize chain config");
-    file.write_all(content.as_bytes()).unwrap();
-
-    println!("Data has been written to the file.");
-    println!("chain config saved to : {file_name}");
-    (chain_config, node_config)
+    let content =
+        serde_json::to_string(&chain_config).map_err(|_| "Failed to serialize chain config")?;
+    write_to_file("data/", "chain_config.json", &content).unwrap();
+    println!("Chain config saved to : data/chain_config.json");
+    Ok((chain_config, node_config))
 }
 
 fn months_to_milliseconds(months: i64) -> i64 {
@@ -236,38 +228,38 @@ fn months_to_milliseconds(months: i64) -> i64 {
     difference
 }
 
-fn read_from_file(path: &str, file_name: &str) -> Result<String,()> {
-        let file_path = Path::new(&path).join(file_name);
-        let mut content = String::new();
-        match File::open(file_path){
-            Ok(mut file) => {
-                let _ = file.read_to_string(&mut content);
-                return  Ok(content);
-            },
-            Err(_) => return Err(())
-        }    
-}
-
-
-
-pub async fn sync_node(boot_node_addr: String) -> Result<Response<RequestSyncResponse>,Status> {
+pub async fn sync_node(boot_node_addr: String) -> Result<(), NodeError> {
+    println!("Syncing node...");
     let mut client = NodeClient::connect(boot_node_addr.clone())
         .await
         .expect("Failed to connect to the boot node");
-    let sync_request = SyncRequest{};
-    client.request_sync(sync_request).await
+    let sync_request = SyncRequest {};
+    let res = client.request_sync(sync_request).await;
+
+    if let Ok(sync_response) = res {
+        let res = sync_response.into_inner();
+        println!("{:#?}", { res });
+        println!("Node successfully connected.");
+        return Ok(());
+    } else {
+        return Err(NodeError::SyncError(format!(
+            "Could not sync with: {boot_node_addr}"
+        )));
+    }
 }
 
-pub async fn run_node(port: &str) {
-    let addr = String::from("127.0.0.1:") + port;
+pub async fn run_node(port: String) -> Result<(), NodeError> {
+    let addr = String::from("127.0.0.1:") + port.as_str();
     println!("✔️ Running node in: {addr}");
+    let parsed_addr = addr
+        .parse()
+        .map_err(|_| NodeError::InvalidConfigInput(String::from("Invalid port")))?;
 
     let node_service = NodeService::default();
     Server::builder()
         .add_service(NodeServer::new(node_service))
-        .serve(addr.parse().unwrap())
+        .serve(parsed_addr)
         .await
-        .unwrap();
+        .map_err(|err| NodeError::NetworkError(err.to_string()))?;
+    Ok(())
 }
-
-
