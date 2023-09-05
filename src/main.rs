@@ -1,3 +1,4 @@
+use ansi_term::Colour::{Green, Red, Yellow};
 use clap::{arg, command, Command};
 use core::sync;
 use std::os::unix::process;
@@ -9,7 +10,7 @@ mod transaction;
 mod utils;
 use node::{
     core::run_node,
-    node::{create_new_blockchain, sync_node},
+    core::{create_new_blockchain, sync_node},
 };
 
 #[tokio::main]
@@ -41,12 +42,12 @@ async fn main() {
         Some(("node", _sub_matches)) => {
             if let Some(port) = _sub_matches.get_one::<String>("port") {
                 run_node(port.to_string()).await.unwrap_or_else(|err| {
-                    eprintln!("{:#?}", err);
+                    eprintln!("{:?}", err);
                     runtime::exit(1);
                 });
             }
             run_node(String::from("50051")).await.unwrap_or_else(|err| {
-                eprintln!("{:#?}", err);
+                eprintln!("{:?}", err);
                 runtime::exit(1);
             });
         }
@@ -55,28 +56,28 @@ async fn main() {
                 sync_node(node_addr.to_string())
                     .await
                     .unwrap_or_else(|err| {
-                        eprintln!("{:#?}", err);
+                        eprintln!("{:?}", err);
                         runtime::exit(1);
                     });
                 if let Some(port) = _sub_matches.get_one::<String>("port") {
                     run_node(port.to_string()).await.unwrap_or_else(|err| {
-                        eprintln!("{:#?}", err);
+                        eprintln!("{:?}", err);
                         runtime::exit(1);
                     });
                 }
                 run_node(String::from("50051")).await.unwrap_or_else(|err| {
-                    eprintln!("{:#?}", err);
+                    eprintln!("{:?}", err);
                     runtime::exit(1);
                 });
             }
         }
         Some(("createblockchain", _sub_matches)) => {
             create_new_blockchain().unwrap_or_else(|err| {
-                eprintln!("{:#?}", err);
+                eprintln!("{}{:?}{}", Red.paint(""), err, Red.paint(""));
                 runtime::exit(1);
             });
             run_node(String::from("50051")).await.unwrap_or_else(|err| {
-                eprintln!("{:#?}", err);
+                eprintln!("{:?}", err);
                 runtime::exit(1);
             });
         }

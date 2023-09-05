@@ -14,10 +14,10 @@ pub fn read_from_file(path: &str, file_name: &str) -> Result<String, ()> {
         Err(error) => {
             match error.kind() {
                 ErrorKind::NotFound => {
-                    eprintln!("Error: could not read from {path}{file_name}: not found");
+                    eprintln!("could not read from {path}{file_name}: not found");
                 }
                 _ => {
-                    eprintln!("Error: could not read from {path}{file_name}: unknown reason");
+                    eprintln!("could not read from {path}{file_name}: unknown reason");
                 }
             }
             process::exit(1)
@@ -29,7 +29,7 @@ pub fn write_to_file(path: &str, file_name: &str, content: &String) -> Result<()
     let folder_path = Path::new(path);
     let file_path = folder_path.join(file_name);
 
-    std::fs::create_dir_all(&folder_path).unwrap();
+    std::fs::create_dir_all(&folder_path).unwrap_or_else(|_| {});
 
     let mut file = File::create(file_path).unwrap();
     file.write_all(content.as_bytes()).unwrap();
