@@ -1,5 +1,7 @@
-use ethers::types::{Address, Signature, U256};
+use ethers::types::{Address, Signature, U256, H160};
 use serde_derive::Serialize;
+
+use crate::signature;
 
 #[derive(Debug, Clone, Serialize)]
 pub struct Transaction {
@@ -27,6 +29,16 @@ impl Transaction {
         }
     }
 
+    pub fn genesis_tx(amount: U256, receiver: Address) -> Transaction {
+        Transaction::new(
+            Address::from([0u8; 20]),
+            receiver,
+            amount,
+            U256::from(0),
+            Signature { r: U256::from(0), s: U256::from(0), v: 0u64 }
+        )
+    }
+
     pub fn from(&self) -> &Address {
         &self.from
     }
@@ -44,4 +56,5 @@ impl Transaction {
     pub fn signature(&self) -> &Signature {
         &self.signature
     }
+
 }
