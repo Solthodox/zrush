@@ -45,6 +45,21 @@ impl Block {
             transactions,
         }
     }
+    pub fn genesis_block(block_reward: U256, receiver: Address) -> Block {
+        let creation_timestamp = Utc::now().timestamp_millis() as u64;
+        Block {
+            header: BlockHeader {
+                hash: String::from(ZERO_HEX),
+                timestamp: creation_timestamp,
+                nonce: U256::from(0),
+                pre_hash: String::from(ZERO_HEX),
+                merkle: String::from(ZERO_HEX),
+                difficulty: U256::from(1),
+            },
+            height: U256::from(0),
+            transactions: vec![Transaction::genesis_tx(block_reward, receiver)]
+        }
+    }
 
     pub fn header(&self) -> &BlockHeader {
         &self.header
@@ -58,21 +73,6 @@ impl Block {
         &self.transactions
     }
 
-    pub fn genesis_block(block_reward: &U256, receiver: &Address) -> Block {
-        let creation_timestamp = Utc::now().timestamp_millis() as u64;
-        Block {
-            header: BlockHeader {
-                hash: String::from(ZERO_HEX),
-                timestamp: creation_timestamp,
-                nonce: U256::from(0),
-                pre_hash: String::from(ZERO_HEX),
-                merkle: String::from(ZERO_HEX),
-                difficulty: U256::from(1),
-            },
-            height: U256::from(0),
-            transactions: Vec::new(),
-        }
-    }
 
     pub fn mine(&mut self, difficulty: U256) {}
 }
