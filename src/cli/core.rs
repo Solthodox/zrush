@@ -1,6 +1,6 @@
-use clap::{Command, arg, command};
+use clap::{arg, command, Command};
 
-use crate::node::core::{run_node, sync_node, create_new_blockchain};
+use crate::node::core::{create_new_blockchain, run_node, sync_node};
 use std::process as runtime;
 
 pub async fn run_cli() {
