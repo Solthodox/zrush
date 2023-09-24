@@ -1,13 +1,9 @@
-use std::{
-    fs::File,
-    io::{stdin, Write},
-    path::Path,
-};
-
 use crate::utils::files::{read_from_file, write_to_file};
+use crate::wallet::core::create_wallet;
 use chrono::{Duration, Utc};
 use ethers::types::{Address, Signature, U256};
 use serde_derive::Serialize;
+use std::io::stdin;
 use tonic::{transport::Server, Code, Request, Response, Status};
 
 mod node {
@@ -106,11 +102,6 @@ pub struct ChainConfig {
     seconds_between_blocks: u8,
     months_between_halvings: u64,
 }
-#[derive(Debug, Default, Serialize, Clone)]
-
-pub struct NodeConfig {
-    wallet_address: Address,
-}
 
 pub fn create_new_blockchain() -> Result<(), NodeError> {
     println!(
@@ -128,12 +119,9 @@ pub fn create_new_blockchain() -> Result<(), NodeError> {
     
     "
     );
-    let (chain_config, node_config) = config_blockchain()
+    let (chain_config, wallet_address) = config_blockchain()
         .map_err(|err_msg| NodeError::InvalidConfigInput(err_msg.to_string()))?;
-    let first_block = Block::genesis_block(
-        &chain_config.initial_block_reward,
-        &node_config.wallet_address,
-    );
+    let first_block = Block::genesis_block(chain_config.initial_block_reward, wallet_address);
     let serialization = serde_json::to_string(&first_block).map_err(|_| {
         NodeError::InvalidConfigInput(String::from("Failed to serialize genesis block"))
     })?;
@@ -141,7 +129,7 @@ pub fn create_new_blockchain() -> Result<(), NodeError> {
     Ok(())
 }
 
-fn config_blockchain() -> Result<(ChainConfig, NodeConfig), &'static str> {
+fn config_blockchain() -> Result<(ChainConfig, Address), &'static str> {
     println!("Name:");
     let mut buf = String::new();
     let _ = stdin()
@@ -200,19 +188,7 @@ fn config_blockchain() -> Result<(ChainConfig, NodeConfig), &'static str> {
         .map_err(|_| "Invalid months between halving")?;
     let months_between_halvings = months_to_milliseconds(months_between_halvings) as u64;
 
-    println!("Wallet address: ");
-    let mut buf = String::new();
-    let _ = stdin()
-        .read_line(&mut buf)
-        .map_err(|_| "stdin: Failed to read wallet address");
-    let wallet_address: String = buf.trim().parse().map_err(|_| "Failed")?;
-    let mut target = [0u8; 20];
-    let source = wallet_address.as_bytes();
-
-    fill_bytes(&mut target, &source, 20);
-    let node_config = NodeConfig {
-        wallet_address: Address::from(&target),
-    };
+    let addr = create_wallet().unwrap();
 
     let creation_timestamp = Utc::now().timestamp_millis() as u64;
 
@@ -229,7 +205,7 @@ fn config_blockchain() -> Result<(ChainConfig, NodeConfig), &'static str> {
         serde_json::to_string(&chain_config).map_err(|_| "Failed to serialize chain config")?;
     write_to_file("./data", "chain_config.json", &content).unwrap();
     println!("Chain config saved to : data/chain_config.json");
-    Ok((chain_config, node_config))
+    Ok((chain_config, addr))
 }
 
 fn months_to_milliseconds(months: i64) -> i64 {

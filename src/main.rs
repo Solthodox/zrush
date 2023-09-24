@@ -1,9 +1,10 @@
 mod block;
-mod node;
 mod cli;
+mod node;
 mod signature;
 mod transaction;
 mod utils;
+mod wallet;
 
 use cli::core::run_cli;
 

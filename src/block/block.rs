@@ -57,7 +57,7 @@ impl Block {
                 difficulty: U256::from(1),
             },
             height: U256::from(0),
-            transactions: vec![Transaction::genesis_tx(block_reward, receiver)]
+            transactions: vec![Transaction::genesis_tx(block_reward, receiver)],
         }
     }
 
@@ -72,7 +72,6 @@ impl Block {
     pub fn transactions(&self) -> &Vec<Transaction> {
         &self.transactions
     }
-
 
     pub fn mine(&mut self, difficulty: U256) {}
 }

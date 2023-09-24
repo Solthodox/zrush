@@ -1,7 +1,5 @@
-use ethers::types::{Address, Signature, U256, H160};
+use ethers::types::{Address, Signature, U256};
 use serde_derive::Serialize;
-
-use crate::signature;
 
 #[derive(Debug, Clone, Serialize)]
 pub struct Transaction {
@@ -35,7 +33,11 @@ impl Transaction {
             receiver,
             amount,
             U256::from(0),
-            Signature { r: U256::from(0), s: U256::from(0), v: 0u64 }
+            Signature {
+                r: U256::from(0),
+                s: U256::from(0),
+                v: 0u64,
+            },
         )
     }
 
@@ -56,5 +58,4 @@ impl Transaction {
     pub fn signature(&self) -> &Signature {
         &self.signature
     }
-
 }
