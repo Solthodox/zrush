@@ -1,5 +1,5 @@
 
 echo "=======REBUILD======="
 rm -rf data
-rm -rf wallet
+rm -rf .keys
 cargo build
