@@ -9,8 +9,16 @@ use rand::thread_rng;
 pub fn create_wallet() -> Result<Address, WalletError> {
     println!("Creating wallet...");
 
+    println!("Wallet name: ");
+    let mut buf = String::new();
+    let _ = stdin()
+        .read_line(&mut buf)
+        .map_err(|_| "stdin: Failed to read password");
+
+    let uuid = buf.to_lowercase();
+    let uuid = uuid.as_str();
+
     println!("Wallet password: ");
-    let dir = Path::new(".keys");
     let mut buf = String::new();
     let _ = stdin()
         .read_line(&mut buf)
@@ -22,10 +30,12 @@ pub fn create_wallet() -> Result<Address, WalletError> {
         Ok(_) => (),
         Err(_) => (),
     }
-    let res = Wallet::new_keystore(&dir, &mut thread_rng(), &wallet_password, None);
+    let dir = Path::new(".keys");
+    let res = Wallet::new_keystore(&dir, &mut thread_rng(), &wallet_password, Some(uuid));
     match res {
         Ok((wallet, _)) => {
             let addr = wallet.address();
+            println!("Wallet saved to .keys/{uuid}");
             return Ok(addr);
         }
         Err(e) => return Err(e),

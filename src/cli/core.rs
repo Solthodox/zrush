@@ -1,6 +1,6 @@
 use clap::{arg, command, Command};
 
-use crate::node::core::{create_new_blockchain, run_node, sync_node};
+use crate::{node::core::{create_new_blockchain, run_node, sync_node}, wallet::core::create_wallet};
 use std::process as runtime;
 
 pub async fn run_cli() {
@@ -25,6 +25,7 @@ pub async fn run_cli() {
                 )
                 .arg(arg!(-p --port <PORT> "Sets the boot node to sync from").required(false)),
         )
+        .subcommand(Command::new("createwallet").about("Generates a new private key from an arbitrary password, cyphers it and stores it locally"))
         .get_matches();
 
     match matches.subcommand() {
@@ -69,6 +70,9 @@ pub async fn run_cli() {
                 eprintln!("{:?}", err);
                 runtime::exit(1);
             });
+        }
+        Some(("createwallet", _sub_matches)) => {
+            let _ = create_wallet();
         }
         _ => unreachable!("Exhausted list of subcommands and subcommand_required prevents `None`"),
     }
