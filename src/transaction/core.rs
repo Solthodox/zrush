@@ -6,7 +6,8 @@ pub struct Transaction {
     from: Address,
     to: Address,
     amount: U256,
-    fee: U256,
+    fee_amount: U256,
+    fee_receiver: Address,
     signature: Signature,
 }
 
@@ -15,14 +16,16 @@ impl Transaction {
         from: Address,
         to: Address,
         amount: U256,
-        fee: U256,
+        fee_amount: U256,
         signature: Signature,
     ) -> Transaction {
+        let fee_receiver = Address::from([0u8;20]);
         Transaction {
             from,
             to,
             amount,
-            fee,
+            fee_amount,
+            fee_receiver,
             signature,
         }
     }
@@ -52,9 +55,8 @@ impl Transaction {
     pub fn amount(&self) -> &U256 {
         &self.amount
     }
-    pub fn fee(&self) -> &U256 {
-        &self.fee
-    }
+    pub fn fee_amount(&self) -> &U256 {
+        &self.fee_amount    }
     pub fn signature(&self) -> &Signature {
         &self.signature
     }
