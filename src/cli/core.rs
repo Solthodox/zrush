@@ -1,6 +1,13 @@
 use clap::{arg, command, Command};
 
-use crate::{node::core::{create_new_blockchain, run_node, sync_node}, wallet::core::create_wallet};
+use crate::{
+    node::{
+        core::{create_new_blockchain, run_node, sync_node},
+        memory::NodeMemory,
+    },
+    utils::files::read_from_file,
+    wallet::core::create_wallet,
+};
 use std::process as runtime;
 
 pub async fn run_cli() {
@@ -29,17 +36,24 @@ pub async fn run_cli() {
         .get_matches();
 
     match matches.subcommand() {
-        Some(("node", _sub_matches)) => {
+           Some(("node", _sub_matches)) => {
+            let chain = read_from_file("data/storage", "chain_data.json").unwrap();
+            let node_memory = NodeMemory::cache(&chain).unwrap_or_else(|err| {
+                eprintln!("{:?}", err);
+                runtime::exit(1);
+            });
             if let Some(port) = _sub_matches.get_one::<String>("port") {
-                run_node(port.to_string()).await.unwrap_or_else(|err| {
+                run_node(port.to_string(), node_memory).await.unwrap_or_else(|err| {
                     eprintln!("{:?}", err);
                     runtime::exit(1);
                 });
             }
-            run_node(String::from("50051")).await.unwrap_or_else(|err| {
-                eprintln!("{:?}", err);
-                runtime::exit(1);
-            });
+            else{
+                run_node(String::from("50051"), node_memory).await.unwrap_or_else(|err| {
+                    eprintln!("{:?}", err);
+                    runtime::exit(1);
+                });
+            }
         }
         Some(("sync", _sub_matches)) => {
             if let Some(node_addr) = _sub_matches.get_one::<String>("boot") {
@@ -49,16 +63,22 @@ pub async fn run_cli() {
                         eprintln!("{:?}", err);
                         runtime::exit(1);
                     });
+                let chain = read_from_file("data/storage", "chain_data.json").unwrap();
+                let node_memory = NodeMemory::cache(&chain).unwrap_or_else(|err| {
+                    eprintln!("{:?}", err);
+                    runtime::exit(1);
+                });
                 if let Some(port) = _sub_matches.get_one::<String>("port") {
-                    run_node(port.to_string()).await.unwrap_or_else(|err| {
+                    run_node(port.to_string(), node_memory).await.unwrap_or_else(|err| {
+                        eprintln!("{:?}", err);
+                        runtime::exit(1);
+                    });
+                }else{
+                    run_node(String::from("50051"), node_memory).await.unwrap_or_else(|err| {
                         eprintln!("{:?}", err);
                         runtime::exit(1);
                     });
                 }
-                run_node(String::from("50051")).await.unwrap_or_else(|err| {
-                    eprintln!("{:?}", err);
-                    runtime::exit(1);
-                });
             }
         }
         Some(("createblockchain", _sub_matches)) => {
@@ -66,10 +86,17 @@ pub async fn run_cli() {
                 eprintln!("{:?}", err);
                 runtime::exit(1);
             });
-            run_node(String::from("50051")).await.unwrap_or_else(|err| {
+            let chain = read_from_file("data/storage", "chain_data.json").unwrap();
+            let node_memory = NodeMemory::cache(&chain).unwrap_or_else(|err| {
                 eprintln!("{:?}", err);
                 runtime::exit(1);
             });
+            run_node(String::from("50051"), node_memory)
+                .await
+                .unwrap_or_else(|err| {
+                    eprintln!("{:?}", err);
+                    runtime::exit(1);
+                });
         }
         Some(("createwallet", _sub_matches)) => {
             let _ = create_wallet();

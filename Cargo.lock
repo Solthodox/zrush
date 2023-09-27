@@ -3864,6 +3864,7 @@ dependencies = [
  "ansi_term",
  "chrono",
  "clap",
+ "ecdsa",
  "ethers",
  "hex",
  "hostname",
