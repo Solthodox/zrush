@@ -36,23 +36,26 @@ pub async fn run_cli() {
         .get_matches();
 
     match matches.subcommand() {
-           Some(("node", _sub_matches)) => {
+        Some(("node", _sub_matches)) => {
             let chain = read_from_file("data/storage", "chain_data.json").unwrap();
             let node_memory = NodeMemory::cache(&chain).unwrap_or_else(|err| {
                 eprintln!("{:?}", err);
                 runtime::exit(1);
             });
             if let Some(port) = _sub_matches.get_one::<String>("port") {
-                run_node(port.to_string(), node_memory).await.unwrap_or_else(|err| {
-                    eprintln!("{:?}", err);
-                    runtime::exit(1);
-                });
-            }
-            else{
-                run_node(String::from("50051"), node_memory).await.unwrap_or_else(|err| {
-                    eprintln!("{:?}", err);
-                    runtime::exit(1);
-                });
+                run_node(port.to_string(), node_memory)
+                    .await
+                    .unwrap_or_else(|err| {
+                        eprintln!("{:?}", err);
+                        runtime::exit(1);
+                    });
+            } else {
+                run_node(String::from("50051"), node_memory)
+                    .await
+                    .unwrap_or_else(|err| {
+                        eprintln!("{:?}", err);
+                        runtime::exit(1);
+                    });
             }
         }
         Some(("sync", _sub_matches)) => {
@@ -69,15 +72,19 @@ pub async fn run_cli() {
                     runtime::exit(1);
                 });
                 if let Some(port) = _sub_matches.get_one::<String>("port") {
-                    run_node(port.to_string(), node_memory).await.unwrap_or_else(|err| {
-                        eprintln!("{:?}", err);
-                        runtime::exit(1);
-                    });
-                }else{
-                    run_node(String::from("50051"), node_memory).await.unwrap_or_else(|err| {
-                        eprintln!("{:?}", err);
-                        runtime::exit(1);
-                    });
+                    run_node(port.to_string(), node_memory)
+                        .await
+                        .unwrap_or_else(|err| {
+                            eprintln!("{:?}", err);
+                            runtime::exit(1);
+                        });
+                } else {
+                    run_node(String::from("50051"), node_memory)
+                        .await
+                        .unwrap_or_else(|err| {
+                            eprintln!("{:?}", err);
+                            runtime::exit(1);
+                        });
                 }
             }
         }
