@@ -1,7 +1,7 @@
 use ethers::types::{Address, Signature, U256};
-use serde_derive::Serialize;
+use serde_derive::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Transaction {
     from: Address,
     to: Address,
@@ -19,7 +19,7 @@ impl Transaction {
         fee_amount: U256,
         signature: Signature,
     ) -> Transaction {
-        let fee_receiver = Address::from([0u8;20]);
+        let fee_receiver = Address::from([0u8; 20]);
         Transaction {
             from,
             to,
@@ -56,7 +56,12 @@ impl Transaction {
         &self.amount
     }
     pub fn fee_amount(&self) -> &U256 {
-        &self.fee_amount    }
+        &self.fee_amount
+    }
+
+    pub fn fee_receiver(&self) -> &Address {
+        &self.fee_receiver
+    }
     pub fn signature(&self) -> &Signature {
         &self.signature
     }

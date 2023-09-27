@@ -2,22 +2,24 @@ use crate::transaction::core::Transaction;
 pub const ZERO_HEX: &str = "0000000000000000000000000000000000000000000000000000000000000000";
 use chrono::Utc;
 use ethers::types::{Address, U256};
-use serde_derive::Serialize;
+use serde_derive::{Deserialize, Serialize};
 
-#[derive(Debug, Default, Serialize)]
+// TODO: order functions
+#[derive(Debug, Default, Serialize, Deserialize)]
 pub struct BlockHeader {
-    hash: String,
-    timestamp: u64,
-    nonce: U256,
-    pre_hash: String,
-    merkle: String,
-    difficulty: U256,
+    pub hash: String,
+    pub timestamp: u64,
+    pub nonce: U256,
+    pub pre_hash: String,
+    pub merkle: String,
+    pub difficulty: U256,
 }
 
-#[derive(Debug, Default, Serialize)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 pub struct Block {
     header: BlockHeader,
     height: U256,
+    reward: U256,
     transactions: Vec<Transaction>,
 }
 
@@ -30,6 +32,7 @@ impl Block {
         merkle: String,
         difficulty: U256,
         height: U256,
+        reward: U256,
         transactions: Vec<Transaction>,
     ) -> Block {
         Block {
@@ -42,6 +45,7 @@ impl Block {
                 difficulty,
             },
             height,
+            reward,
             transactions,
         }
     }
@@ -57,6 +61,7 @@ impl Block {
                 difficulty: U256::from(1),
             },
             height: U256::from(0),
+            reward: block_reward,
             transactions: vec![Transaction::genesis_tx(block_reward, receiver)],
         }
     }
@@ -71,6 +76,30 @@ impl Block {
 
     pub fn transactions(&self) -> &Vec<Transaction> {
         &self.transactions
+    }
+
+    pub fn hash(&self) -> &String {
+        &self.header().hash
+    }
+
+    pub fn merkle(&self) -> &String {
+        &self.header().merkle
+    }
+
+    pub fn pre_hash(&self) -> &String {
+        &self.header().pre_hash
+    }
+
+    pub fn nonce(&self) -> &U256 {
+        &self.header().nonce
+    }
+
+    pub fn difficulty(&self) -> &U256 {
+        &self.header().difficulty
+    }
+
+    pub fn reward(&self) -> &U256 {
+        &self.reward
     }
 
     pub fn mine(&mut self, difficulty: U256) {}

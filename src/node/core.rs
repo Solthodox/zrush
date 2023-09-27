@@ -1,3 +1,4 @@
+use crate::node::memory::NodeMemory;
 use crate::utils::files::{read_from_file, write_to_file};
 use crate::wallet::core::create_wallet;
 use chrono::{Duration, Utc};
@@ -27,7 +28,9 @@ pub enum NodeError {
 }
 
 #[derive(Default)]
-pub struct NodeService;
+pub struct NodeService {
+    memory: NodeMemory,
+}
 
 #[tonic::async_trait]
 impl Node for NodeService {
@@ -122,7 +125,8 @@ pub fn create_new_blockchain() -> Result<(), NodeError> {
     let (chain_config, wallet_address) = config_blockchain()
         .map_err(|err_msg| NodeError::InvalidConfigInput(err_msg.to_string()))?;
     let first_block = Block::genesis_block(chain_config.initial_block_reward, wallet_address);
-    let serialization = serde_json::to_string(&first_block).map_err(|_| {
+    let chain = vec![first_block];
+    let serialization = serde_json::to_string(&chain).map_err(|_| {
         NodeError::InvalidConfigInput(String::from("Failed to serialize genesis block"))
     })?;
     let _ = write_to_file("./data/storage", "chain_data.json", &serialization);
@@ -241,14 +245,14 @@ pub async fn sync_node(boot_node_addr: String) -> Result<(), NodeError> {
     }
 }
 
-pub async fn run_node(port: String) -> Result<(), NodeError> {
+pub async fn run_node(port: String, memory: NodeMemory) -> Result<(), NodeError> {
     let addr = String::from("127.0.0.1:") + port.as_str();
     println!("✔️ Running node in: {addr}");
     let parsed_addr = addr
         .parse()
         .map_err(|_| NodeError::InvalidConfigInput(String::from("Invalid port")))?;
 
-    let node_service = NodeService::default();
+    let node_service = NodeService { memory };
     Server::builder()
         .add_service(NodeServer::new(node_service))
         .serve(parsed_addr)
