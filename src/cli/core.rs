@@ -8,7 +8,7 @@ use crate::{
     utils::files::read_from_file,
     wallet::core::create_wallet,
 };
-use std::process as runtime;
+use std::{process as runtime, sync::Mutex};
 
 pub async fn run_cli() {
     let matches = command!()
@@ -43,14 +43,14 @@ pub async fn run_cli() {
                 runtime::exit(1);
             });
             if let Some(port) = _sub_matches.get_one::<String>("port") {
-                run_node(port.to_string(), node_memory)
+                run_node(port.to_string(), Mutex::new(node_memory))
                     .await
                     .unwrap_or_else(|err| {
                         eprintln!("{:?}", err);
                         runtime::exit(1);
                     });
             } else {
-                run_node(String::from("50051"), node_memory)
+                run_node(String::from("50051"), Mutex::new(node_memory))
                     .await
                     .unwrap_or_else(|err| {
                         eprintln!("{:?}", err);
@@ -72,14 +72,14 @@ pub async fn run_cli() {
                     runtime::exit(1);
                 });
                 if let Some(port) = _sub_matches.get_one::<String>("port") {
-                    run_node(port.to_string(), node_memory)
+                    run_node(port.to_string(), Mutex::new(node_memory))
                         .await
                         .unwrap_or_else(|err| {
                             eprintln!("{:?}", err);
                             runtime::exit(1);
                         });
                 } else {
-                    run_node(String::from("50051"), node_memory)
+                    run_node(String::from("50051"), Mutex::new(node_memory))
                         .await
                         .unwrap_or_else(|err| {
                             eprintln!("{:?}", err);
@@ -98,7 +98,7 @@ pub async fn run_cli() {
                 eprintln!("{:?}", err);
                 runtime::exit(1);
             });
-            run_node(String::from("50051"), node_memory)
+            run_node(String::from("50051"), Mutex::new(node_memory))
                 .await
                 .unwrap_or_else(|err| {
                     eprintln!("{:?}", err);

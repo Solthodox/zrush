@@ -1,6 +1,8 @@
 use ethers::types::{Address, Signature, U256};
 use serde_derive::{Deserialize, Serialize};
 
+use crate::node::memory::NodeMemory;
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Transaction {
     from: Address,
@@ -64,5 +66,13 @@ impl Transaction {
     }
     pub fn signature(&self) -> &Signature {
         &self.signature
+    }
+
+    pub fn verify(&self, mem: &NodeMemory) -> bool {
+        let from = self.from();
+        let balance_from = mem.balance_of(from);
+        let amount = self.amount();
+
+        balance_from >= *amount
     }
 }

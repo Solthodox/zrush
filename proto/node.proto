@@ -6,8 +6,25 @@ message TransactionRequest {
     bytes to = 2;
     bytes amount = 3;
     bytes fee = 4;
-    Signature signature=5;
+    bytes fee_receiver = 5; 
+    Signature signature= 6;
 }
+
+message TransactionResponse {}
+
+message AddBlockRequest {
+    string hash = 1;
+    uint64 timestamp = 2;
+    bytes nonce = 3;
+    string pre_hash = 4;
+    string merkle = 5;
+    bytes difficulty = 6;
+    bytes height = 7;
+    bytes reward = 8;
+    repeated TransactionRequest transactions = 9;
+}
+
+message BlockResponse{}
 
 message Signature {
     bytes s=1;
@@ -21,10 +38,19 @@ message RequestSyncResponse {
     string data=2;
 }
 
-message TransactionResponse {}
+message NodeInfoRequest {}
+
+message RequestNodeInfoResponse {
+    string address=1;
+}
+
+
+
 
 
 service Node {
+    rpc RequestAddBlock(AddBlockRequest) returns(BlockResponse){}
     rpc RequestSendTransaction(TransactionRequest) returns(TransactionResponse) {}
     rpc RequestSync(SyncRequest) returns(RequestSyncResponse) {}
+    rpc RequestNodeInfo(NodeInfoRequest) returns(RequestNodeInfoResponse) {}
 }

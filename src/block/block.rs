@@ -1,4 +1,4 @@
-use crate::transaction::core::Transaction;
+use crate::{node::memory::NodeMemory, transaction::core::Transaction};
 pub const ZERO_HEX: &str = "0000000000000000000000000000000000000000000000000000000000000000";
 use chrono::Utc;
 use ethers::types::{Address, U256};
@@ -64,6 +64,14 @@ impl Block {
             reward: block_reward,
             transactions: vec![Transaction::genesis_tx(block_reward, receiver)],
         }
+    }
+
+    pub fn validate(&self, mem: &NodeMemory) -> bool {
+        todo!()
+    }
+
+    pub fn merkle_tx(txs: &Vec<Transaction>) -> String {
+        todo!()
     }
 
     pub fn header(&self) -> &BlockHeader {
