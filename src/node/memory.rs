@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use std::ops::Add;
 use std::sync::Mutex;
 
-use crate::block::block::Block;
+use crate::block::core::Block;
 use crate::transaction::core::Transaction;
 
 #[derive(Debug)]
@@ -14,6 +14,8 @@ pub enum NodeMemoryError {
 #[derive(Debug, Default)]
 pub struct NodeMemory {
     cache: Mutex<NodeCache>,
+    mempool: Mutex<Vec<Transaction>>,
+    node_address: Mutex<String>,
 }
 
 #[derive(Debug, Default)]
@@ -30,6 +32,8 @@ impl NodeMemory {
         let cache = NodeCache::default();
         NodeMemory {
             cache: Mutex::new(cache),
+            mempool: Mutex::new(vec![]),
+            node_address: Mutex::new(String::new()),
         }
     }
 
@@ -65,8 +69,11 @@ impl NodeMemory {
         let _ = &mut self.cache.lock().unwrap().balances.insert(*addr, *amount);
     }
 
+    pub fn push_to_mempool(&mut self, tx: &Transaction) {
+        let _ = &mut self.mempool.lock().unwrap().push(tx.clone());
+    }
+
     pub fn increment_nonce(&mut self, addr: &Address) {
-        let binding = U256::from(0);
         let current_nonce = self.current_nonce(addr);
         let _ = &mut self
             .cache
@@ -94,6 +101,15 @@ impl NodeMemory {
     pub fn increment_block_height(&mut self) {
         let mut block_height = self.cache.lock().unwrap().block_height;
         block_height = block_height.add(1);
+    }
+
+    pub fn node_address(&self) -> String {
+        self.node_address.lock().unwrap().clone()
+    }
+
+    pub fn set_node_address(&mut self, addr: String) {
+        let mut node_address = self.node_address.lock().unwrap();
+        *node_address = addr;
     }
 
     pub fn cache(chain: &str) -> Result<NodeMemory, NodeMemoryError> {

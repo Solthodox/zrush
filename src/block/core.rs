@@ -1,4 +1,4 @@
-use crate::transaction::core::Transaction;
+use crate::{node::memory::NodeMemory, transaction::core::Transaction};
 pub const ZERO_HEX: &str = "0000000000000000000000000000000000000000000000000000000000000000";
 use chrono::Utc;
 use ethers::types::{Address, U256};
@@ -49,7 +49,7 @@ impl Block {
             transactions,
         }
     }
-    pub fn genesis_block(block_reward: U256, receiver: Address) -> Block {
+    pub fn genesis_block(block_reward: U256, receiver: Address, timestamp: u64) -> Block {
         let creation_timestamp = Utc::now().timestamp_millis() as u64;
         Block {
             header: BlockHeader {
@@ -62,8 +62,19 @@ impl Block {
             },
             height: U256::from(0),
             reward: block_reward,
-            transactions: vec![Transaction::genesis_tx(block_reward, receiver)],
+            transactions: vec![Transaction::genesis_tx(block_reward, receiver, timestamp)],
         }
+    }
+
+    pub fn validate(&self, mem: &NodeMemory) -> bool {
+        let difficulty_ok = *self.difficulty() == mem.block_difficulty();
+        let height_ok = *self.difficulty() == mem.block_height();
+        let reward_ok = *self.reward() == mem.block_reward();
+        true
+    }
+
+    pub fn merkle_tx(txs: &Vec<Transaction>) -> String {
+        todo!()
     }
 
     pub fn header(&self) -> &BlockHeader {

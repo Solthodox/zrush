@@ -1,6 +1,11 @@
 use ethers::types::{Address, Signature, U256};
 use serde_derive::{Deserialize, Serialize};
 
+use crate::{
+    node::memory::NodeMemory,
+    utils::ethers_empty_types::{ADDRESS_ZERO, EMPTY_SIGNATURE, U256_ZERO},
+};
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Transaction {
     from: Address,
@@ -9,6 +14,7 @@ pub struct Transaction {
     fee_amount: U256,
     fee_receiver: Address,
     signature: Signature,
+    timestamp: u64,
 }
 
 impl Transaction {
@@ -18,8 +24,9 @@ impl Transaction {
         amount: U256,
         fee_amount: U256,
         signature: Signature,
+        timestamp: u64,
+        fee_receiver: Address,
     ) -> Transaction {
-        let fee_receiver = Address::from([0u8; 20]);
         Transaction {
             from,
             to,
@@ -27,20 +34,19 @@ impl Transaction {
             fee_amount,
             fee_receiver,
             signature,
+            timestamp,
         }
     }
 
-    pub fn genesis_tx(amount: U256, receiver: Address) -> Transaction {
+    pub fn genesis_tx(amount: U256, receiver: Address, timestamp: u64) -> Transaction {
         Transaction::new(
-            Address::from([0u8; 20]),
+            ADDRESS_ZERO(),
             receiver,
             amount,
-            U256::from(0),
-            Signature {
-                r: U256::from(0),
-                s: U256::from(0),
-                v: 0u64,
-            },
+            U256_ZERO(),
+            EMPTY_SIGNATURE(),
+            timestamp,
+            ADDRESS_ZERO(),
         )
     }
 
@@ -64,5 +70,13 @@ impl Transaction {
     }
     pub fn signature(&self) -> &Signature {
         &self.signature
+    }
+
+    pub fn verify(&self, mem: &NodeMemory) -> bool {
+        let from = self.from();
+        let balance_from = mem.balance_of(from);
+        let amount = self.amount();
+
+        balance_from >= *amount
     }
 }
