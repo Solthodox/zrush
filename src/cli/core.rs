@@ -1,5 +1,4 @@
 use clap::{arg, command, Command};
-
 use crate::{
     node::{
         core::{create_new_blockchain, run_node, sync_node},

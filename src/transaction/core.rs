@@ -27,7 +27,6 @@ impl Transaction {
         timestamp: u64,
         fee_receiver: Address,
     ) -> Transaction {
-        let fee_receiver = ADDRESS_ZERO;
         Transaction {
             from,
             to,
@@ -41,13 +40,13 @@ impl Transaction {
 
     pub fn genesis_tx(amount: U256, receiver: Address, timestamp: u64) -> Transaction {
         Transaction::new(
-            ADDRESS_ZERO,
+            ADDRESS_ZERO(),
             receiver,
             amount,
-            U256_ZERO,
-            EMPTY_SIGNATURE,
+            U256_ZERO(),
+            EMPTY_SIGNATURE(),
             timestamp,
-            ADDRESS_ZERO,
+            ADDRESS_ZERO(),
         )
     }
 

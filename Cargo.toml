@@ -14,7 +14,6 @@ ecdsa = "0.16.8"
 ethers = "2.0.9"
 hex = "0.4.3"
 hostname = "0.3.1"
-libp2p = {version ="0.50", features=["tcp", "dns","noise", "yamux", "websocket", "ping","async-std", "macros"]}
 prost = "0.11.9"
 rand = "0.8.5"
 serde = "1.0.186"

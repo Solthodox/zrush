@@ -49,7 +49,7 @@ impl Block {
             transactions,
         }
     }
-    pub fn genesis_block(block_reward: U256, receiver: Address) -> Block {
+    pub fn genesis_block(block_reward: U256, receiver: Address, timestamp: u64) -> Block {
         let creation_timestamp = Utc::now().timestamp_millis() as u64;
         Block {
             header: BlockHeader {
@@ -62,7 +62,7 @@ impl Block {
             },
             height: U256::from(0),
             reward: block_reward,
-            transactions: vec![Transaction::genesis_tx(block_reward, receiver)],
+            transactions: vec![Transaction::genesis_tx(block_reward, receiver, timestamp)],
         }
     }
 

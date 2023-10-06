@@ -5,14 +5,17 @@ use crate::{
     transaction::core::Transaction,
     utils::{
         banner::print_banner,
+        ethers_empty_types::ADDRESS_ZERO,
         files::{read_from_file, write_to_file},
         timestamp::{current_timestamp, months_to_milliseconds},
     },
     wallet::core::create_wallet,
+    p2p::core::connect_node
 };
+
 use ethers::types::{Address, Signature, U256};
 use serde_derive::Serialize;
-use std::{io::stdin, net::SocketAddr, sync::Mutex, thread};
+use std::{io::stdin,sync::Mutex, thread};
 use tokio::runtime;
 use tonic::{transport::Server, Code, Request, Response, Status};
 
@@ -247,32 +250,12 @@ fn parse_grpc_transaction_request(tx: TransactionRequest) -> Result<Transaction,
         U256::from(amount),
         U256::from(fee),
         Signature { r, s, v },
+        current_timestamp(),
+        ADDRESS_ZERO(),
     ))
 }
 
-async fn connect_node(client_address: Option<SocketAddr>) -> Result<(), ()> {
-    if let Some(addr) = client_address {
-        let addr: String = addr.ip().to_string();
-        let mut client = NodeClient::connect(addr.clone()).await.unwrap();
-        let res = client
-            .request_node_info(Request::new(NodeInfoRequest {}))
-            .await;
-
-        if let Ok(response) = res {
-            let nodes = read_from_file("data/", "node_data.json").unwrap();
-            let mut nodes: Vec<String> = serde_json::from_str(&nodes).unwrap();
-            let response = response.into_inner();
-            let address = response.address;
-            nodes.push(address);
-            let content = serde_json::to_string(&nodes).unwrap();
-            write_to_file("data/", "node_data.json", &content).unwrap();
-        }
-    }
-    Ok(())
-}
-
 #[derive(Debug, Default, Serialize, Clone)]
-
 pub struct ChainConfig {
     name: String,
     chain_id: u8,
@@ -289,7 +272,11 @@ pub fn create_new_blockchain() -> Result<(), NodeError> {
     let (chain_config, wallet_address) = config_blockchain()
         .map_err(|err_msg| NodeError::InvalidConfigInput(err_msg.to_string()))?;
 
-    let first_block = Block::genesis_block(chain_config.initial_block_reward, wallet_address);
+    let first_block = Block::genesis_block(
+        chain_config.initial_block_reward,
+        wallet_address,
+        current_timestamp(),
+    );
     let chain = vec![first_block];
 
     let serialization = serde_json::to_string(&chain).map_err(|_| {
