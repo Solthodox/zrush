@@ -10,25 +10,23 @@ use crate::{
         timestamp::{current_timestamp, months_to_milliseconds},
     },
     wallet::core::create_wallet,
-    p2p::core::connect_node
+    p2p::core::{connect_node, propagate_transaction, propagate_block}
 };
-
 use ethers::types::{Address, Signature, U256};
 use serde_derive::Serialize;
 use std::{io::stdin,sync::Mutex, thread};
 use tokio::runtime;
 use tonic::{transport::Server, Code, Request, Response, Status};
+use super::node_proto::node_proto;
 
-mod node {
-    include!("../grpc/node.rs");
-}
 
-use node::{
+use node_proto::{
     node_client::NodeClient,
     node_server::{Node, NodeServer},
     AddBlockRequest, BlockResponse, NodeInfoRequest, RequestNodeInfoResponse, RequestSyncResponse,
     SyncRequest, TransactionRequest, TransactionResponse,
 };
+
 
 #[derive(Debug)]
 pub enum NodeError {
@@ -50,6 +48,7 @@ impl Node for NodeService {
     ) -> Result<Response<TransactionResponse>, Status> {
         let client_address = req.remote_addr();
         let tx = req.into_inner();
+        let tx_copy = tx.clone();
 
         // Parse the gRPC transaction request
         let parsed_tx = match parse_grpc_transaction_request(tx) {
@@ -103,6 +102,7 @@ impl Node for NodeService {
             // Run the async function within the tokio runtime
             rt.block_on(async {
                 connect_node(client_address).await.unwrap();
+                propagate_transaction(tx_copy).await.unwrap();
             });
         });
 
@@ -116,8 +116,9 @@ impl Node for NodeService {
         req: Request<AddBlockRequest>,
     ) -> Result<Response<BlockResponse>, Status> {
         let client_address = req.remote_addr();
-        let request = req.into_inner();
-        let block = parse_grpc_block_request(request)
+        let block = req.into_inner();
+        let block_copy = block.clone();
+        let block = parse_grpc_block_request(block)
             .map_err(|err| Status::new(Code::InvalidArgument, err))?;
         let mem = &mut self.memory.lock().unwrap();
 
@@ -132,6 +133,7 @@ impl Node for NodeService {
             // Run the async function within the tokio runtime
             rt.block_on(async {
                 connect_node(client_address).await.unwrap();
+                propagate_block(block_copy).await.unwrap();
             });
         });
 
