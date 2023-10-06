@@ -1,6 +1,5 @@
 
 echo "=======REBUILD======="
-rm -rf src/grpc
 rm -rf data
-mkdir src/grpc
+rm -rf .keys
 cargo build

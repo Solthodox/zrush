@@ -1,6 +1,6 @@
 use std::fs::File;
 use std::io::ErrorKind;
-use std::io::{stdin, Read, Write};
+use std::io::{Read, Write};
 use std::path::Path;
 use std::process;
 pub fn read_from_file(path: &str, file_name: &str) -> Result<String, ()> {
