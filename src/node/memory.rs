@@ -5,6 +5,7 @@ use std::sync::Mutex;
 
 use crate::block::core::Block;
 use crate::transaction::core::Transaction;
+use crate::utils::ethers_empty_types::ADDRESS_ZERO;
 
 #[derive(Debug)]
 pub enum NodeMemoryError {
@@ -99,8 +100,8 @@ impl NodeMemory {
     }
 
     pub fn increment_block_height(&mut self) {
-        let mut block_height = self.cache.lock().unwrap().block_height;
-        block_height = block_height.add(1);
+        let block_height = self.cache.lock().unwrap().block_height;
+        let _ = block_height.add(1);
     }
 
     pub fn node_address(&self) -> String {
@@ -117,7 +118,6 @@ impl NodeMemory {
         let chain = serde_json::from_str::<Vec<Block>>(&chain)
             .map_err(|_| NodeMemoryError::CacheError(String::from("Could not read chain data")))?;
 
-        let zero_address = Address::from([0u8; 20]);
         let mut node_memory = NodeMemory::new();
         let len = chain.len();
 
@@ -127,10 +127,16 @@ impl NodeMemory {
                 node_memory.update_last_block_info(block);
             }
 
-            node_memory.process_transactions(zero_address, block.transactions());
+            node_memory.process_transactions(block.transactions());
         }
 
         Ok(node_memory)
+    }
+
+    pub fn update(&mut self, transactions: &Vec<Transaction>) {
+        for tx in transactions.iter() {
+            
+        }
     }
 
     fn update_last_block_info(&mut self, block: &Block) {
@@ -139,18 +145,18 @@ impl NodeMemory {
         self.set_block_reward(block.reward());
     }
 
-    fn process_transactions(&mut self, zero_address: Address, transactions: &[Transaction]) {
+    fn process_transactions(&mut self, transactions: &[Transaction]) {
         for tx in transactions.iter() {
-            self.process_sender(&zero_address, tx);
+            self.process_sender(tx);
             self.process_receiver(tx);
-            self.process_fee(&zero_address, tx);
+            self.process_fee(tx);
         }
     }
 
-    fn process_sender(&mut self, zero_address: &Address, tx: &Transaction) {
+    fn process_sender(&mut self, tx: &Transaction) {
         let amount = tx.amount();
         let from = tx.from();
-        if *from != *zero_address {
+        if *from != ADDRESS_ZERO() {
             let sender_balance = self.balance_of(from);
             let new_balance = sender_balance.checked_sub(*amount).unwrap();
             self.set_balance(from, &new_balance);
@@ -166,10 +172,10 @@ impl NodeMemory {
         self.set_balance(to, &new_balance);
     }
 
-    fn process_fee(&mut self, zero_address: &Address, tx: &Transaction) {
+    fn process_fee(&mut self,tx: &Transaction) {
         let fee_amount = tx.fee_amount();
         let fee_receiver = tx.fee_receiver();
-        if *fee_receiver != *zero_address {
+        if *fee_receiver != ADDRESS_ZERO() {
             let sender_balance = self.balance_of(fee_receiver);
             let new_sender_balance = sender_balance.checked_sub(*fee_amount).unwrap();
             self.set_balance(fee_receiver, &new_sender_balance);
@@ -179,4 +185,153 @@ impl NodeMemory {
             self.set_balance(fee_receiver, &new_receiver_balance);
         }
     }
+}
+
+
+#[cfg(test)]
+mod tests {
+    use crate::utils::ethers_empty_types::{U256_ZERO, EMPTY_SIGNATURE};
+
+    use super::*;
+    use ethers::types::{Address, H160, U256};
+
+    #[test]
+    fn test_new_node_memory() {
+        let node_memory = NodeMemory::new();
+        let cache = node_memory.cache.lock().unwrap();
+        let mempool = node_memory.mempool.lock().unwrap();
+        let node_address = node_memory.node_address.lock().unwrap();
+
+        assert!(cache.balances.is_empty());
+        assert!(cache.nonces.is_empty());
+        assert_eq!(cache.block_difficulty, U256::zero());
+        assert_eq!(cache.block_height, U256::zero());
+        assert_eq!(cache.block_reward, U256::zero());
+
+        assert!(mempool.is_empty());
+
+        assert!(node_address.is_empty());
+    }
+
+    #[test]
+    fn test_balance_of() {
+        let node_memory = NodeMemory::new();
+        let address = H160::zero();
+        let balance = node_memory.balance_of(&address);
+        assert_eq!(balance, U256::zero());
+    }
+
+    #[test]
+    fn test_current_nonce() {
+        let node_memory = NodeMemory::new();
+        let address = H160::zero();
+        let nonce = node_memory.current_nonce(&address);
+        assert_eq!(nonce, U256::zero());
+    }
+
+    #[test]
+    fn test_block_difficulty() {
+        let node_memory = NodeMemory::new();
+        let difficulty = node_memory.block_difficulty();
+        assert_eq!(difficulty, U256::zero());
+    }
+
+    #[test]
+    fn test_block_height() {
+        let node_memory = NodeMemory::new();
+        let height = node_memory.block_height();
+        assert_eq!(height, U256::zero());
+    }
+
+    #[test]
+    fn test_block_reward() {
+        let node_memory = NodeMemory::new();
+        let reward = node_memory.block_reward();
+        assert_eq!(reward, U256::zero());
+    }
+
+    #[test]
+    fn test_set_balance() {
+        let mut node_memory = NodeMemory::new();
+        let address = H160::from_low_u64_be(123);
+        let amount = U256::from(100);
+
+        node_memory.set_balance(&address, &amount);
+        let balance = node_memory.balance_of(&address);
+        assert_eq!(balance, amount);
+    }
+
+    #[test]
+    fn test_push_to_mempool() {
+        let mut node_memory = NodeMemory::new();
+        let transaction = Transaction::new(
+            ADDRESS_ZERO(),
+            ADDRESS_ZERO(),
+            U256_ZERO(),
+            U256_ZERO(),
+            EMPTY_SIGNATURE(),
+            0u64,
+            ADDRESS_ZERO(),
+        ); // You need to create a transaction instance.
+        node_memory.push_to_mempool(&transaction);
+
+        let mempool = node_memory.mempool.lock().unwrap();
+        assert_eq!(mempool.len(), 1);
+    }
+
+    #[test]
+    fn test_increment_nonce() {
+        let mut node_memory = NodeMemory::new();
+        let address = H160::zero();
+
+        node_memory.increment_nonce(&address);
+        let nonce = node_memory.current_nonce(&address);
+        assert_eq!(nonce, U256::one());
+    }
+
+    // Similar tests for set_block_height, set_block_reward, and set_block_difficulty methods.
+
+    #[test]
+    fn test_node_address() {
+        let node_memory = NodeMemory::new();
+        let address = node_memory.node_address();
+        assert_eq!(address, "");
+    }
+
+    #[test]
+    fn test_set_node_address() {
+        let mut node_memory = NodeMemory::new();
+        let address = "0x1234567890abcdef".to_string();
+
+        node_memory.set_node_address(address.clone());
+        let retrieved_address = node_memory.node_address();
+        assert_eq!(retrieved_address, address);
+    }
+
+    // Test the cache method when deserialization is successful.
+    #[test]
+    fn test_cache_successful() {
+        let chain_json = "[{\"height\": 1, \"difficulty\": \"0x10\", \"reward\": \"0x20\", \"transactions\": []}]";
+        let result = NodeMemory::cache(chain_json);
+        assert!(result.is_ok());
+
+        let node_memory = result.unwrap();
+        assert_eq!(node_memory.block_height(), U256::from(1));
+        assert_eq!(node_memory.block_difficulty(), U256::from(16));
+        assert_eq!(node_memory.block_reward(), U256::from(32));
+    }
+
+    // Test the cache method when deserialization fails.
+    #[test]
+    fn test_cache_deserialization_error() {
+        let invalid_chain_json = "invalid_json";
+        let result = NodeMemory::cache(invalid_chain_json);
+        assert!(result.is_err());
+       /*  assert_eq!(
+            result.err().unwrap(),
+            NodeMemoryError::CacheError(String::from("Could not read chain data"))
+        ); */
+    }
+
+    // Write more tests for the update and private helper methods as needed.
 }

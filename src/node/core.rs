@@ -1,6 +1,8 @@
+use super::node_proto::node_proto;
 use crate::{
     block::core::Block,
     node::memory::NodeMemory,
+    p2p::core::{connect_node, propagate_block, propagate_transaction},
     signature::verification::verify_signature,
     transaction::core::Transaction,
     utils::{
@@ -10,15 +12,12 @@ use crate::{
         timestamp::{current_timestamp, months_to_milliseconds},
     },
     wallet::core::create_wallet,
-    p2p::core::{connect_node, propagate_transaction, propagate_block}
 };
 use ethers::types::{Address, Signature, U256};
 use serde_derive::Serialize;
-use std::{io::stdin,sync::Mutex, thread};
+use std::{io::stdin, sync::Mutex, thread};
 use tokio::runtime;
 use tonic::{transport::Server, Code, Request, Response, Status};
-use super::node_proto::node_proto;
-
 
 use node_proto::{
     node_client::NodeClient,
@@ -26,7 +25,6 @@ use node_proto::{
     AddBlockRequest, BlockResponse, NodeInfoRequest, RequestNodeInfoResponse, RequestSyncResponse,
     SyncRequest, TransactionRequest, TransactionResponse,
 };
-
 
 #[derive(Debug)]
 pub enum NodeError {
@@ -120,7 +118,7 @@ impl Node for NodeService {
         let block_copy = block.clone();
         let block = parse_grpc_block_request(block)
             .map_err(|err| Status::new(Code::InvalidArgument, err))?;
-        let mem = &mut self.memory.lock().unwrap();
+        let mut mem = &mut self.memory.lock().unwrap();
 
         // Use `await` here to wait for `connect_node` to complete
         let handle = thread::spawn(move || {
@@ -138,7 +136,7 @@ impl Node for NodeService {
         });
 
         handle.join().unwrap();
-        match block.validate(&mem) {
+        match block.validate(&mut mem) {
             true => {
                 let chain = read_from_file("data/storage", "chain_data.json").unwrap();
                 let mut chain: Vec<Block> = serde_json::from_str(&chain).unwrap();

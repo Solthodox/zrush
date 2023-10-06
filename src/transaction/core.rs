@@ -3,7 +3,10 @@ use serde_derive::{Deserialize, Serialize};
 
 use crate::{
     node::memory::NodeMemory,
-    utils::ethers_empty_types::{ADDRESS_ZERO, EMPTY_SIGNATURE, U256_ZERO},
+    utils::{
+        ethers_empty_types::{ADDRESS_ZERO, EMPTY_SIGNATURE, U256_ZERO},
+        hashing::hash,
+    },
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -78,5 +81,28 @@ impl Transaction {
         let amount = self.amount();
 
         balance_from >= *amount
+    }
+
+    pub fn get_merkle(mempool: &Vec<Transaction>) -> String {
+        let mut merkle = Vec::new();
+
+        for t in mempool {
+            let hash = hash(t);
+            merkle.push(hash);
+        }
+
+        if merkle.len() % 2 == 1 {
+            let last = merkle.last().cloned().unwrap();
+            merkle.push(last);
+        }
+
+        while merkle.len() > 1 {
+            let mut h1 = merkle.remove(0);
+            let mut h2 = merkle.remove(0);
+            h1.push_str(&mut h2);
+            let nh = hash(&h1);
+            merkle.push(nh);
+        }
+        merkle.pop().unwrap()
     }
 }

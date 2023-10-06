@@ -1,4 +1,3 @@
-use clap::{arg, command, Command};
 use crate::{
     node::{
         core::{create_new_blockchain, run_node, sync_node},
@@ -7,6 +6,7 @@ use crate::{
     utils::files::read_from_file,
     wallet::core::create_wallet,
 };
+use clap::{arg, command, Command};
 use std::{process as runtime, sync::Mutex};
 
 pub async fn run_cli() {
