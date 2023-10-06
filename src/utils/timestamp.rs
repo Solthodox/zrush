@@ -1,7 +1,8 @@
+use chrono::{Duration, Utc};
+
 pub fn current_timestamp() -> u64 {
     Utc::now().timestamp_millis() as u64
 }
-
 
 pub fn months_to_milliseconds(months: i64) -> i64 {
     let current_time = Utc::now();

@@ -1,9 +1,13 @@
 use crate::{
-    block::block::Block,
+    block::core::Block,
     node::memory::NodeMemory,
     signature::verification::verify_signature,
     transaction::core::Transaction,
-    utils::{files::{read_from_file, write_to_file}, banner::print_banner, timestamp::{months_to_milliseconds, current_timestamp}},
+    utils::{
+        banner::print_banner,
+        files::{read_from_file, write_to_file},
+        timestamp::{current_timestamp, months_to_milliseconds},
+    },
     wallet::core::create_wallet,
 };
 use ethers::types::{Address, Signature, U256};

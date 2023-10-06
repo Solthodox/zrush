@@ -1,4 +1,3 @@
-
 pub fn print_banner() {
     println!(
         "

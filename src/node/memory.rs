@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use std::ops::Add;
 use std::sync::Mutex;
 
-use crate::block::block::Block;
+use crate::block::core::Block;
 use crate::transaction::core::Transaction;
 
 #[derive(Debug)]
