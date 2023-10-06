@@ -67,7 +67,10 @@ impl Block {
     }
 
     pub fn validate(&self, mem: &NodeMemory) -> bool {
-        todo!()
+        let difficulty_ok = *self.difficulty() == mem.block_difficulty();
+        let height_ok = *self.difficulty() == mem.block_height();
+        let reward_ok = *self.reward() == mem.block_reward();
+        true
     }
 
     pub fn merkle_tx(txs: &Vec<Transaction>) -> String {

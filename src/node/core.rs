@@ -3,14 +3,13 @@ use crate::{
     node::memory::NodeMemory,
     signature::verification::verify_signature,
     transaction::core::Transaction,
-    utils::files::{read_from_file, write_to_file},
+    utils::{files::{read_from_file, write_to_file}, banner::print_banner, timestamp::{months_to_milliseconds, current_timestamp}},
     wallet::core::create_wallet,
 };
-use tokio::runtime;
-use chrono::{Duration, Utc};
 use ethers::types::{Address, Signature, U256};
 use serde_derive::Serialize;
-use std::{io::stdin, sync::Mutex, net::SocketAddr, thread};
+use std::{io::stdin, net::SocketAddr, sync::Mutex, thread};
+use tokio::runtime;
 use tonic::{transport::Server, Code, Request, Response, Status};
 
 mod node {
@@ -86,8 +85,6 @@ impl Node for NodeService {
         // Push the transaction to the mempool
         mem.push_to_mempool(&parsed_tx);
 
-        
-
         // Use `await` here to wait for `connect_node` to complete
         let handle = thread::spawn(move || {
             // Create a tokio runtime
@@ -95,13 +92,13 @@ impl Node for NodeService {
                 .enable_all()
                 .build()
                 .unwrap();
-    
+
             // Run the async function within the tokio runtime
             rt.block_on(async {
                 connect_node(client_address).await.unwrap();
             });
         });
-    
+
         handle.join().unwrap();
 
         // Return a successful response
@@ -116,7 +113,7 @@ impl Node for NodeService {
         let block = parse_grpc_block_request(request)
             .map_err(|err| Status::new(Code::InvalidArgument, err))?;
         let mem = &mut self.memory.lock().unwrap();
-        
+
         // Use `await` here to wait for `connect_node` to complete
         let handle = thread::spawn(move || {
             // Create a tokio runtime
@@ -124,16 +121,23 @@ impl Node for NodeService {
                 .enable_all()
                 .build()
                 .unwrap();
-    
+
             // Run the async function within the tokio runtime
             rt.block_on(async {
                 connect_node(client_address).await.unwrap();
             });
         });
-    
+
         handle.join().unwrap();
         match block.validate(&mem) {
-            true => return Ok(Response::new(BlockResponse {})),
+            true => {
+                let chain = read_from_file("data/storage", "chain_data.json").unwrap();
+                let mut chain: Vec<Block> = serde_json::from_str(&chain).unwrap();
+                chain.push(block);
+                let content = serde_json::to_string(&chain).unwrap();
+                write_to_file("data/", "chain_data.json", &content).unwrap();
+                return Ok(Response::new(BlockResponse {}));
+            }
             false => {
                 return Err(Status::new(
                     Code::Unauthenticated,
@@ -142,26 +146,26 @@ impl Node for NodeService {
             }
         }
     }
-    
+
     async fn request_sync(
         &self,
         _req: Request<SyncRequest>,
     ) -> Result<Response<RequestSyncResponse>, Status> {
         let client_address = _req.remote_addr();
-         // Use `await` here to wait for `connect_node` to complete
-         let handle = thread::spawn(move || {
+        // Use `await` here to wait for `connect_node` to complete
+        let handle = thread::spawn(move || {
             // Create a tokio runtime
             let rt = runtime::Builder::new_current_thread()
                 .enable_all()
                 .build()
                 .unwrap();
-    
+
             // Run the async function within the tokio runtime
             rt.block_on(async {
                 connect_node(client_address).await.unwrap();
             });
         });
-    
+
         handle.join().unwrap();
         let config = read_from_file("data/", "chain_config.json");
         let data = read_from_file("data/", "storage/chain_data.json");
@@ -178,7 +182,9 @@ impl Node for NodeService {
         &self,
         _req: Request<NodeInfoRequest>,
     ) -> Result<Response<RequestNodeInfoResponse>, Status> {
-        Ok(Response::new(RequestNodeInfoResponse {address:self.memory.lock().unwrap().node_address()}))
+        Ok(Response::new(RequestNodeInfoResponse {
+            address: self.memory.lock().unwrap().node_address(),
+        }))
     }
 }
 
@@ -244,7 +250,9 @@ async fn connect_node(client_address: Option<SocketAddr>) -> Result<(), ()> {
     if let Some(addr) = client_address {
         let addr: String = addr.ip().to_string();
         let mut client = NodeClient::connect(addr.clone()).await.unwrap();
-        let res = client.request_node_info(Request::new(NodeInfoRequest {})).await;
+        let res = client
+            .request_node_info(Request::new(NodeInfoRequest {}))
+            .await;
 
         if let Ok(response) = res {
             let nodes = read_from_file("data/", "node_data.json").unwrap();
@@ -317,7 +325,7 @@ fn config_blockchain() -> Result<(ChainConfig, Address), &'static str> {
     let months_between_halvings = months_to_milliseconds(months_between_halvings) as u64;
 
     let addr = create_wallet().unwrap();
-    let creation_timestamp = Utc::now().timestamp_millis() as u64;
+    let creation_timestamp = current_timestamp();
 
     let chain_config = ChainConfig {
         name: name.clone(),
@@ -351,29 +359,6 @@ fn parse_u256(input: &str) -> Result<U256, &'static str> {
 
     target[..bytes_to_copy].copy_from_slice(&source[..bytes_to_copy]);
     Ok(U256::from(&target))
-}
-fn months_to_milliseconds(months: i64) -> i64 {
-    let current_time = Utc::now();
-    let target_time = current_time
-        .checked_add_signed(Duration::days(months * 30))
-        .unwrap();
-    let target_naive = target_time.naive_utc();
-    let difference = target_naive.timestamp_millis() - current_time.timestamp_millis();
-
-    difference
-}
-
-fn print_banner() {
-    println!(
-        "
-███████╗██████╗ ██╗   ██╗███████╗██╗  ██╗
-╚══███╔╝██╔══██╗██║   ██║██╔════╝██║  ██║
-  ███╔╝ ██████╔╝██║   ██║███████╗███████║
- ███╔╝  ██╔══██╗██║   ██║╚════██║██╔══██║
-███████╗██║  ██║╚██████╔╝███████║██║  ██║
-╚══════╝╚═╝  ╚═╝ ╚═════╝ ╚══════╝╚═╝  ╚═╝                                         
-    "
-    );
 }
 
 pub async fn sync_node(boot_node_addr: String) -> Result<(), NodeError> {

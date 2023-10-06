@@ -11,6 +11,7 @@ pub struct Transaction {
     fee_amount: U256,
     fee_receiver: Address,
     signature: Signature,
+    timestamp: u64,
 }
 
 impl Transaction {
@@ -20,6 +21,8 @@ impl Transaction {
         amount: U256,
         fee_amount: U256,
         signature: Signature,
+        timestamp: u64,
+        fee_receiver: Address,
     ) -> Transaction {
         let fee_receiver = Address::from([0u8; 20]);
         Transaction {
@@ -29,6 +32,7 @@ impl Transaction {
             fee_amount,
             fee_receiver,
             signature,
+            timestamp
         }
     }
 
@@ -43,6 +47,8 @@ impl Transaction {
                 s: U256::from(0),
                 v: 0u64,
             },
+            timestamp: Utc::now().timestamp_millis() as u64,
+            fee_receiver :Address::from([0u8; 20]),
         )
     }
 

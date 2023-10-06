@@ -33,7 +33,7 @@ impl NodeMemory {
         NodeMemory {
             cache: Mutex::new(cache),
             mempool: Mutex::new(vec![]),
-            node_address: Mutex::new(String::new())
+            node_address: Mutex::new(String::new()),
         }
     }
 
@@ -107,7 +107,7 @@ impl NodeMemory {
         self.node_address.lock().unwrap().clone()
     }
 
-    pub fn set_node_address(&mut self, addr:String) {
+    pub fn set_node_address(&mut self, addr: String) {
         let mut node_address = self.node_address.lock().unwrap();
         *node_address = addr;
     }
